@@ -3,6 +3,38 @@ $(document).ready(function() {
     const statusDiv = $('#status');
     const chatMessages = $('#chat-messages');
     let isListening = false;
+    let recognition;
+
+    if ('webkitSpeechRecognition' in window) {
+        recognition = new webkitSpeechRecognition();
+        recognition.lang = 'vi-VN'; // Set language to Vietnamese
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        recognition.onstart = function() {
+            isListening = true;
+            micButton.css('background', 'red');
+            statusDiv.text('Đang lắng nghe...');
+        };
+
+        recognition.onresult = function(event) {
+            const text = event.results[0][0].transcript;
+            processUserInput(text);
+        };
+
+        recognition.onerror = function(event) {
+            console.error('Speech recognition error:', event.error);
+            statusDiv.text('Có lỗi xảy ra, vui lòng thử lại.');
+            stopListening();
+        };
+
+        recognition.onend = function() {
+            stopListening();
+        };
+    } else {
+        console.warn('Speech recognition not supported in this browser.');
+        statusDiv.text('Trình duyệt không hỗ trợ nhận diện giọng nói.');
+    }
 
     micButton.click(function() {
         if (!isListening) {
@@ -13,28 +45,15 @@ $(document).ready(function() {
     });
 
     function startListening() {
-        isListening = true;
-        micButton.css('background', 'red');
-        statusDiv.text('Đang lắng nghe...');
-        
-        $.ajax({
-            url: '/start_listening/',
-            method: 'POST',
-            success: function(response) {
-                if (response.text) {
-                    addMessage(response.text, 'user');
-                    processUserInput(response.text);
-                }
-                stopListening();
-            },
-            error: function() {
-                statusDiv.text('Có lỗi xảy ra');
-                stopListening();
-            }
-        });
+        if (recognition) {
+            recognition.start();
+        }
     }
 
     function stopListening() {
+        if (recognition) {
+            recognition.stop();
+        }
         isListening = false;
         micButton.css('background', '#007bff');
         statusDiv.text('');
@@ -49,9 +68,19 @@ $(document).ready(function() {
                 'csrfmiddlewaretoken': getCookie('csrftoken')
             },
             success: function(response) {
-                if (response.response) {
-                    addMessage(response.response, 'bot');
+                if (response.status === 'success') {
+                    addMessage(response.response.join('<br>'), 'bot');
+                    if (window.speechSynthesis) {
+                        const utterance = new SpeechSynthesisUtterance(response.response.join(' '));
+                        utterance.lang = 'vi-VN';
+                        window.speechSynthesis.speak(utterance);
+                    }
+                } else {
+                    addMessage("Có lỗi xảy ra, vui lòng thử lại.", 'bot');
                 }
+            },
+            error: function(xhr, status, error) {
+                addMessage("Lỗi kết nối, vui lòng thử lại.", 'bot');
             }
         });
     }
@@ -59,10 +88,15 @@ $(document).ready(function() {
     function addMessage(text, sender) {
         const messageDiv = $('<div>')
             .addClass('message')
-            .addClass(sender + '-message')
-            .text(text);
-        chatMessages.append(messageDiv);
-        chatMessages.scrollTop(chatMessages[0].scrollHeight);
+            .addClass(`${sender}-message`);
+        
+        if (typeof text === 'string') {
+            const p = $('<p>').html(text);
+            messageDiv.append(p);
+        }
+        
+        $('#chat-messages').append(messageDiv);
+        $('.chat-box').scrollTop($('.chat-box')[0].scrollHeight);
     }
 
     function getCookie(name) {

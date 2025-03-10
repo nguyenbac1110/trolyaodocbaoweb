@@ -40,19 +40,41 @@
 .status-text {
     color: #666;
 }
-
 .message {
     margin: 10px 0;
-    padding: 10px;
+    padding: 15px;
     border-radius: 5px;
+    white-space: pre-line;
+    font-family: monospace;
+    width: 80%;
+    clear: both;
+    display: block;
 }
 
 .user-message {
     background: #e3f2fd;
-    margin-left: 20%;
+    float: right;
 }
 
 .bot-message {
     background: #f5f5f5;
-    margin-right: 20%;
+    float: left;
+}
+
+#chat-messages {
+    overflow-y: auto;
+    height: calc(100% - 60px);
+}
+
+.message p {
+    margin: 0;
+    word-wrap: break-word;
+}
+.bot-message p, .system-message p {
+    margin: 5px 0;
+    line-height: 1.4;
+}
+
+.user-message p {
+    margin: 5px 0;
 }
