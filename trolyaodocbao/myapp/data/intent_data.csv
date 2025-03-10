@@ -1,0 +1,39 @@
+text,intent
+đọc tin tức mới nhất,latest_news
+tin tức hôm nay,latest_news
+xem tin tức,latest_news
+tin tức mới nhất,latest_news
+hôm nay,latest_news
+đọc bài,search_news
+đọc chi tiết,search_news
+xem bài,search_news
+đọc nội dung,search_news
+cho tôi xem,search_news
+đọc,search_news
+xem,search_news
+bài,search_news
+nội dung,search_news
+chi tiết,search_news
+mở bài báo,search_news
+thời sự,category_news
+thế giới,category_news
+kinh doanh,category_news
+công nghệ,category_news
+khoa học,category_news
+video,category_news
+podcasts,category_news
+góc nhìn,category_news
+bất động sản,category_news
+sức khỏe,category_news
+thể thao,category_news
+giải trí,category_news
+pháp luật,category_news
+giáo dục,category_news
+xe,category_news
+đời sống,category_news
+du lịch,category_news
+ý kiến,category_news
+bạn hãy giới thiệu về bản thân,intro_bot
+bạn là ai,intro_bot
+bạn có thể làm gì,intro_bot
+bot có thể giúp tôi những gì,intro_bot
