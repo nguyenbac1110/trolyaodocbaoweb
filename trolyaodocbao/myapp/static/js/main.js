@@ -5,90 +5,145 @@ $(document).ready(function() {
     let isListening = false;
     let isSpeaking = false;
     let recognition = null;
-    let speechSynthesis = window.speechSynthesis;
-    let currentUtterance = null;
-    let voices = []; // Lưu trữ danh sách giọng nói
 
-    // Hàm tải danh sách giọng nói
-    function loadVoices() {
-        voices = speechSynthesis.getVoices();
-        console.log("Voices loaded:", voices.length);
-        // Log danh sách giọng nói để debug
-        if (voices.length > 0) {
-            voices.forEach((voice, index) => {
-                console.log(`Voice ${index}: ${voice.name} (${voice.lang}) ${voice.default ? '- Default' : ''}`);
-            });
+    console.log("Document ready, initializing microphone functionality");
+
+    // Kiểm tra hỗ trợ nhận dạng giọng nói
+    function checkSpeechRecognitionSupport() {
+        // Kiểm tra các API nhận dạng giọng nói khác nhau
+        if ('webkitSpeechRecognition' in window) {
+            return 'webkitSpeechRecognition';
+        } else if ('SpeechRecognition' in window) {
+            return 'SpeechRecognition';
         } else {
-            console.warn("Không tìm thấy giọng nói nào trong trình duyệt!");
+            return null;
         }
     }
 
-    // Tải giọng nói ngay khi khởi động
-    if (speechSynthesis) {
-        // Một số trình duyệt đã có sẵn giọng nói
-        loadVoices();
+    // Khởi tạo nhận dạng giọng nói
+    function initSpeechRecognition() {
+        console.log("Initializing speech recognition...");
         
-        // Đăng ký sự kiện cho các trình duyệt cần thời gian để tải giọng nói
-        if (speechSynthesis.onvoiceschanged !== undefined) {
-            speechSynthesis.onvoiceschanged = loadVoices;
+        const recognitionAPI = checkSpeechRecognitionSupport();
+        
+        if (recognitionAPI) {
+            console.log(`Using ${recognitionAPI} API`);
+            
+            if (recognitionAPI === 'webkitSpeechRecognition') {
+                recognition = new webkitSpeechRecognition();
+            } else {
+                recognition = new SpeechRecognition();
+            }
+            
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'vi-VN';
+
+            recognition.onstart = function() {
+                console.log("Speech recognition started");
+                isListening = true;
+                micButton.removeClass('speaking').addClass('listening');
+                micButton.find('i').removeClass('fa-microphone fa-volume-up').addClass('fa-microphone-slash');
+                statusDiv.text('Đang lắng nghe...');
+            };
+
+            recognition.onend = function() {
+                console.log("Speech recognition ended");
+                stopListening();
+            };
+
+            recognition.onresult = function(event) {
+                console.log("Speech recognition result received");
+                const text = event.results[0][0].transcript;
+                console.log("Recognized text:", text);
+                processUserInput(text);
+            };
+
+            recognition.onerror = function(event) {
+                console.error('Speech recognition error:', event.error);
+                statusDiv.text('Có lỗi xảy ra: ' + event.error);
+                stopListening();
+                
+                // Handle permission errors
+                if (event.error === 'not-allowed') {
+                    statusDiv.text('Vui lòng cấp quyền truy cập microphone');
+                    alert("Vui lòng cấp quyền truy cập microphone cho trang web này để sử dụng tính năng nhận dạng giọng nói.");
+                }
+            };
+            
+            return true;
+        } else {
+            console.error("Speech recognition not supported");
+            micButton.prop('disabled', true);
+            statusDiv.text('Trình duyệt không hỗ trợ nhận dạng giọng nói');
+            return false;
         }
     }
-
-    // Initialize speech recognition
-    if ('webkitSpeechRecognition' in window) {
-        recognition = new webkitSpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = false;
-        recognition.lang = 'vi-VN';
-
-        recognition.onstart = function() {
-            isListening = true;
-            micButton.removeClass('speaking').addClass('listening');
-            micButton.find('i').removeClass('fa-microphone fa-volume-up').addClass('fa-microphone-slash');
-            statusDiv.text('Đang lắng nghe...');
-        };
-
-        recognition.onend = function() {
-            stopListening();
-        };
-
-        recognition.onresult = function(event) {
-            const text = event.results[0][0].transcript;
-            processUserInput(text);
-        };
-
-        recognition.onerror = function(event) {
-            console.error('Speech recognition error:', event.error);
-            statusDiv.text('Có lỗi xảy ra: ' + event.error);
-            stopListening();
-        };
-    } else {
-        micButton.prop('disabled', true);
-        statusDiv.text('Trình duyệt không hỗ trợ nhận dạng giọng nói');
+    
+    // Khởi tạo nhận dạng giọng nói khi trang tải
+    initSpeechRecognition();
+    
+    // Hiển thị thông báo về trạng thái của nút microphone khi tải trang
+    if (recognition) {
+        console.log("Microphone button ready");
+        statusDiv.text('Nhấn vào nút micro để nói');
+        setTimeout(() => statusDiv.text(''), 3000);
     }
 
-    micButton.click(function() {
+    // Xử lý sự kiện click nút microphone
+    micButton.on('click', function() {
+        console.log("Microphone button clicked, isSpeaking=", isSpeaking, ", isListening=", isListening);
+        
         if (isSpeaking) {
             // Nếu đang nói, dừng nói và chuyển nút về trạng thái bình thường
+            console.log("Stopping speaking");
             stopSpeaking();
-            micButton.removeClass('speaking');
-            micButton.find('i').removeClass('fa-volume-up').addClass('fa-microphone');
-            statusDiv.text('');
             return;
         }
         
-        if (!isListening && recognition) {
+        if (!recognition) {
+            console.log("Reinitializing speech recognition");
+            if (!initSpeechRecognition()) {
+                statusDiv.text('Không thể khởi tạo nhận dạng giọng nói');
+                setTimeout(() => statusDiv.text(''), 3000);
+                return;
+            }
+        }
+        
+        if (!isListening) {
             // Bắt đầu lắng nghe
-            recognition.start();
+            console.log("Starting speech recognition");
+            try {
+                recognition.start();
+            } catch (e) {
+                console.error("Error starting speech recognition:", e);
+                
+                // Nếu đã có phiên đang chạy, khởi tạo lại
+                if (e.message.includes('already started')) {
+                    recognition.stop();
+                    setTimeout(() => {
+                        recognition.start();
+                    }, 100);
+                } else {
+                    statusDiv.text('Lỗi khởi động: ' + e.message);
+                    setTimeout(() => statusDiv.text(''), 3000);
+                }
+            }
         } else {
             // Dừng lắng nghe
+            console.log("Stopping speech recognition");
             stopListening();
         }
     });
 
     function stopListening() {
+        console.log("stopListening called");
         if (recognition) {
-            recognition.stop();
+            try {
+                recognition.stop();
+            } catch (e) {
+                console.error("Error stopping recognition:", e);
+            }
         }
         isListening = false;
         micButton.removeClass('listening');
@@ -96,91 +151,91 @@ $(document).ready(function() {
         statusDiv.text('');
     }
 
-    // Hàm đọc văn bản bằng giọng nói
+    // Kiểm tra và yêu cầu quyền truy cập microphone
+    function requestMicrophonePermission() {
+        console.log("Requesting microphone permission");
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(function(stream) {
+                    console.log("Microphone permission granted");
+                    // Dừng stream ngay khi được cấp quyền
+                    stream.getTracks().forEach(track => track.stop());
+                    // Cập nhật UI
+                    micButton.prop('disabled', false);
+                    statusDiv.text('Đã cấp quyền microphone');
+                    setTimeout(() => statusDiv.text(''), 2000);
+                })
+                .catch(function(err) {
+                    console.error("Error getting microphone permission:", err);
+                    micButton.prop('disabled', true);
+                    statusDiv.text('Vui lòng cấp quyền truy cập microphone');
+                });
+        } else {
+            console.error("getUserMedia not supported");
+            statusDiv.text('Trình duyệt không hỗ trợ truy cập microphone');
+        }
+    }
+    
+    // Yêu cầu quyền truy cập microphone khi trang tải
+    requestMicrophonePermission();
+
+    // Hàm đọc văn bản bằng giọng nói sử dụng ResponsiveVoice
     function speakText(text) {
         // Dừng giọng nói trước đó nếu có
         stopSpeaking();
         
-        if (speechSynthesis && text) {
-            console.log("Attempting to speak:", text.substring(0, 50) + "...");
+        if (text && text.trim() !== '') {
+            console.log("Chuẩn bị đọc văn bản:", text.substring(0, 50) + "...");
             
-            // Kiểm tra xem có khả dụng không
-            if (!speechSynthesis.speaking && !speechSynthesis.pending) {
-                isSpeaking = true;
-                micButton.addClass('speaking');
-                micButton.find('i').removeClass('fa-microphone fa-microphone-slash').addClass('fa-volume-up');
-                statusDiv.text('Đang đọc...');
-                
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'vi-VN';
-                
-                // Tải lại giọng nói để đảm bảo có danh sách mới nhất
-                if (voices.length === 0) {
-                    loadVoices();
-                }
-                
-                // Tìm giọng tiếng Việt hoặc sử dụng giọng mặc định
-                let vietnameseVoice = voices.find(voice => 
-                    voice.lang.includes('vi-') || voice.name.toLowerCase().includes('vietnam')
-                );
-                
-                // Nếu không có giọng Việt, sử dụng giọng mặc định
-                if (vietnameseVoice) {
-                    console.log("Using Vietnamese voice:", vietnameseVoice.name);
-                    utterance.voice = vietnameseVoice;
-                } else {
-                    console.log("No Vietnamese voice found, using default voice");
-                }
-                
-                // Điều chỉnh tốc độ nói nếu cần
-                utterance.rate = 1.0; // Tốc độ bình thường
-                utterance.pitch = 1.0; // Âm vực bình thường
-                utterance.volume = 1.0; // Âm lượng tối đa
-                
-                utterance.onstart = function() {
-                    console.log("Speech started");
-                };
-                
-                utterance.onend = function() {
-                    console.log("Speech ended");
+            // Kiểm tra ResponsiveVoice trước khi sử dụng
+            if (typeof responsiveVoice === 'undefined') {
+                console.error("ResponsiveVoice không khả dụng!");
+                return;
+            }
+            
+            isSpeaking = true;
+            micButton.addClass('speaking');
+            micButton.find('i').removeClass('fa-microphone fa-microphone-slash').addClass('fa-volume-up');
+            statusDiv.text('Đang đọc...');
+            
+            // Sử dụng ResponsiveVoice với giọng nữ tiếng Việt
+            responsiveVoice.speak(text, "Vietnamese Female", {
+                rate: 1.0,
+                pitch: 1.0,
+                volume: 1.0,
+                onstart: function() {
+                    console.log("Bắt đầu đọc văn bản");
+                },
+                onend: function() {
+                    console.log("Kết thúc đọc văn bản");
                     isSpeaking = false;
                     micButton.removeClass('speaking');
                     micButton.find('i').removeClass('fa-volume-up').addClass('fa-microphone');
                     statusDiv.text('');
-                };
-                
-                utterance.onerror = function(event) {
-                    console.error("Speech error:", event.error);
+                },
+                onerror: function(error) {
+                    console.error("Lỗi đọc văn bản:", error);
                     isSpeaking = false;
                     micButton.removeClass('speaking');
                     micButton.find('i').removeClass('fa-volume-up').addClass('fa-microphone');
                     statusDiv.text('Lỗi đọc văn bản');
-                };
-                
-                currentUtterance = utterance;
-                
-                // Workaround cho một số trình duyệt (đặc biệt là Chrome)
-                setTimeout(() => {
-                    speechSynthesis.speak(utterance);
-                }, 100);
-            } else {
-                console.warn("Speech synthesis is already speaking or pending");
-            }
+                }
+            });
         } else {
-            console.error("Speech synthesis not available or text is empty");
+            console.error("Văn bản trống, không thể đọc");
         }
     }
     
     // Hàm dừng giọng nói
     function stopSpeaking() {
-        if (speechSynthesis) {
-            speechSynthesis.cancel();
-            currentUtterance = null;
-            isSpeaking = false;
-            micButton.removeClass('speaking');
-            micButton.find('i').removeClass('fa-volume-up').addClass('fa-microphone');
-            statusDiv.text('');
+        if (typeof responsiveVoice !== 'undefined' && responsiveVoice.isPlaying()) {
+            responsiveVoice.cancel();
         }
+        
+        isSpeaking = false;
+        micButton.removeClass('speaking');
+        micButton.find('i').removeClass('fa-volume-up').addClass('fa-microphone');
+        statusDiv.text('');
     }
 
     function addMessage(text, sender) {
@@ -200,7 +255,10 @@ $(document).ready(function() {
         }
         
         $('#chat-messages').append(messageDiv);
-        $('.chat-box').scrollTop($('.chat-box')[0].scrollHeight);
+        
+        // Cuộn xuống tin nhắn mới nhất
+        const chatBox = document.getElementById('chatBox');
+        chatBox.scrollTop = chatBox.scrollHeight;
     }
 
     function processUserInput(text) {

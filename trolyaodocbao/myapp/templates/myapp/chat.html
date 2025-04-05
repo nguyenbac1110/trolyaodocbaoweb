@@ -10,25 +10,27 @@
     {% csrf_token %}
 </head>
 <body>
-    <div class="chat-container">
-        <div class="chat-box" id="chatBox">
-            <div class="welcome-message">
-                <h1>Trợ Lý Đọc Báo AI</h1>
-                <p>Trợ lý thông minh giúp bạn đọc và tìm kiếm tin tức từ báo Nhân Dân. Hãy nhấn vào nút micro để bắt đầu trò chuyện.</p>
-            </div>
+    <div class="app-container">
+        <header class="welcome-message">
+            <h1>Trợ Lý Đọc Báo AI</h1>
+            <p>Trợ lý thông minh giúp bạn đọc và tìm kiếm tin tức từ báo Nhân Dân. Hãy nhấn vào nút micro để bắt đầu trò chuyện.</p>
+        </header>
+        
+        <main class="chat-box" id="chatBox">
             <div id="chat-messages"></div>
-        </div>
+        </main>
+        
+        <footer class="input-area">
+            <div class="mic-container">
+                <button id="micButton" class="mic-button">
+                    <i class="fas fa-microphone"></i>
+                </button>
+                <div id="status" class="status-text"></div>
+            </div>
+        </footer>
     </div>
     
-    <div class="input-area">
-        <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
-            <button id="micButton" class="mic-button">
-                <i class="fas fa-microphone"></i>
-            </button>
-            <div id="status" class="status-text"></div>
-        </div>
-    </div>
-    
+    <script src="https://code.responsivevoice.org/responsivevoice.js?key=gsA6hwIw"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="{% static 'js/main.js' %}"></script>
 </body>

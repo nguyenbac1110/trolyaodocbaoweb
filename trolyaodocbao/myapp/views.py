@@ -7,9 +7,8 @@ from bs4 import BeautifulSoup, Tag
 from typing import List, Optional, Dict, Union
 import os
 import joblib
-import webbrowser
-import random
 import re
+import random
 
 # Initialize intent classifier
 intent_classifier = IntentClassifier()
@@ -89,13 +88,13 @@ class XuLyTinTuc:
             }
         }
     
-    def la_bai_video(self, tieude):
-        """Kiểm tra xem tiêu đề có bắt đầu bằng [Video] hay không"""
-        return tieude.startswith('[Video]')
+    def la_bai_da_phuong_tien(self, tieude):
+        """Kiểm tra xem tiêu đề có bắt đầu bằng [Video] hoặc [Ảnh] hay không"""
+        return tieude.startswith('[Video]') or tieude.startswith('[Ảnh]')
     
-    def loc_bai_video(self, danhsach_bai):
-        """Lọc bỏ tất cả bài viết có tiêu đề bắt đầu bằng [Video]"""
-        return [bai for bai in danhsach_bai if not self.la_bai_video(bai['tieude'])]
+    def loc_bai_da_phuong_tien(self, danhsach_bai):
+        """Lọc bỏ tất cả bài viết có tiêu đề bắt đầu bằng [Video] hoặc [Ảnh]"""
+        return [bai for bai in danhsach_bai if not self.la_bai_da_phuong_tien(bai['tieude'])]
 
     def laytin_moinhat(self):
         """Lấy tin mới nhất từ trang báo Nhân Dân"""
@@ -168,13 +167,13 @@ class XuLyTinTuc:
                                     'url': url
                                 })
 
-            # Lọc bỏ tất cả bài viết video
-            danhsachtin_loc = self.loc_bai_video(danhsachtin)
+            # Lọc bỏ tất cả bài viết video và ảnh
+            danhsachtin_loc = self.loc_bai_da_phuong_tien(danhsachtin)
             
             # Tạo danh sách kết quả hiển thị
             ketqua = [f"Tiêu đề: {tin['tieude']}" for tin in danhsachtin_loc[:10]]
             
-            # Lưu danh sách tin đã lọc bỏ video
+            # Lưu danh sách tin đã lọc bỏ video và ảnh
             self.luutrutintuc = danhsachtin_loc[:10]
             
             # Trả về 10 tin đầu tiên đã lọc, mỗi tin một dòng
@@ -263,29 +262,18 @@ class XuLyTinTuc:
                 noidung_parts = list(dict.fromkeys(noidung_parts))
                 
                 if not noidung_parts:
-                    return ["Không thể đọc nội dung bài viết này. Tôi đã mở bài viết trong trình duyệt để bạn đọc."]
+                    return ["Không thể đọc nội dung bài viết này."]
                 
                 self.baibao_hientai = {
                     'tieude': tin_phuhop['tieude'],
                     'noidung': '\n\n'.join(noidung_parts)
                 }
                 
-                # Mở bài viết trong trình duyệt
-                try:
-                    webbrowser.open(tin_phuhop['url'])
-                except:
-                    pass
-                    
                 return noidung_parts
                 
             except Exception as e:
                 print(f"Lỗi khi tải nội dung: {str(e)}")
-                # Mở bài viết trong trình duyệt nếu xảy ra lỗi
-                try:
-                    webbrowser.open(tin_phuhop['url'])
-                except:
-                    pass
-                return ["Không thể tải nội dung chi tiết. Tôi đã mở bài viết trong trình duyệt để bạn đọc."]
+                return ["Không thể tải nội dung chi tiết."]
         
         return ["Không tìm thấy bài báo với tiêu đề này. Vui lòng nói rõ tiêu đề bài báo bạn muốn đọc."]
 
@@ -314,10 +302,6 @@ class XuLyTinTuc:
         # Xử lý đặc biệt cho "trang chủ"
         if "trang chủ" in noidung_timkiem:
             self.duongdan = trangbao["url"]
-            try:
-                webbrowser.open(self.duongdan)
-            except:
-                pass
             return self.laytin_moinhat()
         
         # Tìm chuyên mục phù hợp
@@ -333,12 +317,6 @@ class XuLyTinTuc:
             # Tạo URL đầy đủ cho chuyên mục
             duongdan_url = f"{trangbao['url'].rstrip('/')}{trangbao['prefix']}{chuyenmuc_duocchon}{trangbao['suffix']}"
             
-            # Mở chuyên mục trong trình duyệt
-            try:
-                webbrowser.open(duongdan_url)
-            except:
-                pass
-            
             # Thêm header để tránh bị chặn như một bot
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -351,30 +329,30 @@ class XuLyTinTuc:
             
             # Kiểm tra mã trạng thái HTTP
             if phanhoi.status_code == 403:
-                return [f"Trang báo Nhân Dân đã chặn truy cập đến chuyên mục này. Tôi đã mở trang trong trình duyệt để bạn xem trực tiếp."]
+                return [f"Trang báo Nhân Dân đã chặn truy cập đến chuyên mục này."]
             elif phanhoi.status_code != 200:
-                return [f"Không thể tải tin tức cho chuyên mục này. Tôi đã mở trang trong trình duyệt để bạn xem trực tiếp."]
+                return [f"Không thể tải tin tức cho chuyên mục này."]
             
             phanhoi.raise_for_status()
             
             # Kiểm tra nội dung có chứa thông báo lỗi hoặc từ chối truy cập
             if "access denied" in phanhoi.text.lower() or "blocked" in phanhoi.text.lower() or "403 forbidden" in phanhoi.text.lower():
-                return [f"Trang báo Nhân Dân đã chặn truy cập đến chuyên mục này. Tôi đã mở trang trong trình duyệt để bạn xem trực tiếp."]
+                return [f"Trang báo Nhân Dân đã chặn truy cập đến chuyên mục này."]
             
             # Lưu URL hiện tại để truy cập bài viết
             self.duongdan = duongdan_url
             
-            ketqua = [f"Đã mở chuyên mục {chuyenmuc} của báo Nhân Dân trong trình duyệt. Đang tải tin tức..."]
+            ketqua = [f"Đã chọn chuyên mục {chuyenmuc} của báo Nhân Dân. Đang tải tin tức..."]
             # Lấy danh sách tin mới nhất cho chuyên mục
             tin_moi = self.laytin_moinhat()
             return ketqua + tin_moi
             
         except requests.Timeout:
-            return [f"Không thể tải tin tức cho chuyên mục này do quá thời gian chờ. Tôi đã mở trang trong trình duyệt để bạn xem trực tiếp."]
+            return [f"Không thể tải tin tức cho chuyên mục này do quá thời gian chờ."]
         except requests.RequestException as e:
-            return [f"Không thể kết nối đến chuyên mục này. Tôi đã mở trang trong trình duyệt để bạn xem trực tiếp."]
+            return [f"Không thể kết nối đến chuyên mục này."]
         except Exception as e:
-            return [f"Đã xảy ra lỗi khi tải tin tức cho chuyên mục này. Tôi đã mở trang trong trình duyệt để bạn xem trực tiếp."]
+            return [f"Đã xảy ra lỗi khi tải tin tức cho chuyên mục này."]
 
     def xuly_yeucau(self, intent, text):
         # Danh sách từ khóa để nhận diện yêu cầu giới thiệu
@@ -397,22 +375,11 @@ class XuLyTinTuc:
             return self.chao_hoi()
         
         elif intent == 'latest_news':
-            try:
-                webbrowser.open(self.duongdan)
-            except:
-                pass
             return self.laytin_moinhat()
         
         elif intent == 'search_news':
             result = self.lay_chitiet_baibao(text)
             if isinstance(result, dict):
-                for tin in self.luutrutintuc:
-                    if tin['tieude'] == result['tieude']:
-                        try:
-                            webbrowser.open(tin['url'])
-                        except:
-                            pass
-                        break
                 return [result['noidung']]  # Trả về nội dung bài báo dưới dạng list
             return result
         
