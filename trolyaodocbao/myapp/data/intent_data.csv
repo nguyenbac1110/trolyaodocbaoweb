@@ -1,9 +1,4 @@
 text,intent
-đọc tin tức mới nhất,latest_news
-tin tức hôm nay,latest_news
-xem tin tức,latest_news
-tin tức mới nhất,latest_news
-hôm nay,latest_news
 đọc bài,search_news
 đọc chi tiết,search_news
 xem bài,search_news
@@ -15,25 +10,45 @@ bài,search_news
 nội dung,search_news
 chi tiết,search_news
 mở bài báo,search_news
-thời sự,category_news
-thế giới,category_news
-kinh doanh,category_news
-công nghệ,category_news
-khoa học,category_news
-video,category_news
-podcasts,category_news
-góc nhìn,category_news
-bất động sản,category_news
-sức khỏe,category_news
-thể thao,category_news
-giải trí,category_news
+chính trị,category_news
+xã luận,category_news
+bình luận phê phán,category_news
+xây dựng đảng,category_news
+kinh tế,category_news
+tài chính chứng khoán,category_news
+thông tin hàng hóa,category_news
+văn hóa,category_news
+xã hội,category_news
+bhxh và cuộc sống,category_news
+người tốt việc tốt,category_news
 pháp luật,category_news
-giáo dục,category_news
-xe,category_news
-đời sống,category_news
 du lịch,category_news
-ý kiến,category_news
+thế giới,category_news
+bình luận quốc tế,category_news
+asean,category_news
+châu phi,category_news
+châu mỹ,category_news
+châu âu,category_news
+trung đông,category_news
+châu á tbd,category_news
+thể thao,category_news
+giáo dục,category_news
+y tế,category_news
+góc tư vấn,category_news
+khoa học công nghệ,category_news
+môi trường,category_news
+bạn đọc,category_news
+đường dây nóng,category_news
+điều tra qua thư bạn đọc,category_news
+kiểm chứng thông tin,category_news
 bạn hãy giới thiệu về bản thân,intro_bot
 bạn là ai,intro_bot
 bạn có thể làm gì,intro_bot
 bot có thể giúp tôi những gì,intro_bot
+chào,greeting
+chào bạn,greeting
+hi,greeting
+hello,greeting
+xin chào,greeting
+
+
