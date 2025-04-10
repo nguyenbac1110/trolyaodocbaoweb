@@ -193,16 +193,30 @@ $(document).ready(function() {
                 return;
             }
             
+            // Tiền xử lý văn bản để đọc liên tục
+            const processedText = preprocessText(text);
+            
             isSpeaking = true;
             micButton.addClass('speaking');
             micButton.find('i').removeClass('fa-microphone fa-microphone-slash').addClass('fa-volume-up');
             statusDiv.text('Đang đọc...');
             
-            // Sử dụng ResponsiveVoice với giọng nữ tiếng Việt
-            responsiveVoice.speak(text, "Vietnamese Female", {
+            // Đảm bảo khởi tạo đúng ResponsiveVoice trước khi đọc
+            if (typeof responsiveVoice.init === 'function') {
+                try {
+                    responsiveVoice.init();
+                } catch (e) {
+                    console.error("Lỗi khởi tạo ResponsiveVoice:", e);
+                }
+            }
+            
+            // Đặt priority để đảm bảo đọc liên tục và không bị gián đoạn
+            responsiveVoice.speak(processedText, "Vietnamese Female", {
                 rate: 1.0,
                 pitch: 1.0,
                 volume: 1.0,
+                priority: 10, // Ưu tiên cao
+                linebreak: 1000, // Tạm dừng ngắn giữa các dòng
                 onstart: function() {
                     console.log("Bắt đầu đọc văn bản");
                 },
@@ -226,10 +240,34 @@ $(document).ready(function() {
         }
     }
     
+    // Hàm tiền xử lý văn bản để đọc liên tục
+    function preprocessText(text) {
+        // Thay thế Tiêu đề: bằng dấu chấm để tạo ngắt câu tự nhiên
+        let processed = text.replace(/Tiêu đề:/g, '.');
+
+        // Chuẩn hóa khoảng trắng và dấu chấm
+        processed = processed.replace(/\s+/g, ' ');
+        processed = processed.replace(/\.+/g, '.');
+        processed = processed.replace(/\.\s+\./g, '.');
+        
+        // Loại bỏ ký tự đặc biệt có thể gây ra vấn đề khi đọc
+        processed = processed.replace(/[^\p{L}\p{N}\p{P}\s]/gu, '');
+        
+        // Chèn dấu phẩy giữa các câu dài để tạo nhịp ngắt tự nhiên
+        processed = processed.replace(/([^.!?]{40,60})\s/g, '$1, ');
+        
+        return processed;
+    }
+    
     // Hàm dừng giọng nói
     function stopSpeaking() {
-        if (typeof responsiveVoice !== 'undefined' && responsiveVoice.isPlaying()) {
+        if (typeof responsiveVoice !== 'undefined') {
             responsiveVoice.cancel();
+            
+            // Đảm bảo xóa hàng đợi để tránh lỗi
+            if (typeof responsiveVoice.clearQueue === 'function') {
+                responsiveVoice.clearQueue();
+            }
         }
         
         isSpeaking = false;

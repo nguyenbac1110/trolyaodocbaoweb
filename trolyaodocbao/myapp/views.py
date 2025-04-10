@@ -89,15 +89,20 @@ class XuLyTinTuc:
         }
     
     def la_bai_da_phuong_tien(self, tieude):
-        """Kiểm tra xem tiêu đề có bắt đầu bằng [Video] hoặc [Ảnh] hay không"""
-        return tieude.startswith('[Video]') or tieude.startswith('[Ảnh]')
+        
+        return (tieude.startswith('[Video]') or 
+                tieude.startswith('[Video}') or 
+                tieude.startswith('[Ảnh]') or
+                tieude.startswith('[Anh]') or 
+                '[Video]' in tieude or 
+                '[Video}' in tieude)
     
     def loc_bai_da_phuong_tien(self, danhsach_bai):
-        """Lọc bỏ tất cả bài viết có tiêu đề bắt đầu bằng [Video] hoặc [Ảnh]"""
+        
         return [bai for bai in danhsach_bai if not self.la_bai_da_phuong_tien(bai['tieude'])]
 
     def laytin_moinhat(self):
-        """Lấy tin mới nhất từ trang báo Nhân Dân"""
+       
         try:
             response = requests.get(self.duongdan)
             soup = BeautifulSoup(response.content, 'html.parser')
@@ -399,20 +404,36 @@ def format_for_tts(text_list):
     if len(text_list) == 1:
         return text_list[0]
     
-    # Nối các mục lại với nhau, nhưng giữ nguyên các đầu mục
+    # Nối các mục lại với nhau, với xử lý đặc biệt cho tiêu đề tin
     result = ""
     for item in text_list:
-        if item.startswith("Tiêu đề:") or item.startswith("-"):
-            # Với các danh sách tin, thêm dấu xuống dòng
-            result += item + ". "
+        # Xử lý riêng cho các dòng tiêu đề
+        if item.startswith("Tiêu đề:"):
+            # Thêm dấu chấm để tạo ngắt câu rõ ràng
+            clean_title = item.replace("Tiêu đề:", "").strip()
+            result += f"{clean_title}. "
+        elif item.startswith("-"):
+            # Với các danh sách có dấu gạch đầu dòng
+            result += item.strip() + ". "
         else:
-            # Với các đoạn văn thông thường, nối lại
-            result += item + " "
+            # Với các đoạn văn bản thông thường, nối lại với dấu chấm để tạo ngắt
+            cleaned_item = item.strip()
+            if cleaned_item:
+                if not cleaned_item.endswith(('.', '!', '?')):
+                    cleaned_item += "."
+                result += cleaned_item + " "
     
-    # Xử lý một số trường hợp đặc biệt để làm gọn
+    # Xử lý một số trường hợp đặc biệt để làm gọn và dễ đọc
     result = re.sub(r'\s+', ' ', result)  # Loại bỏ khoảng trắng thừa
     result = re.sub(r'\.+', '.', result)  # Loại bỏ dấu chấm thừa
     result = re.sub(r'\s+\.', '.', result)  # Xử lý khoảng trắng trước dấu chấm
+    result = re.sub(r'\.\s+\.', '.', result)  # Xử lý nhiều dấu chấm liên tiếp
+    
+    # Thêm khoảng cách sau dấu chấm nếu không có
+    result = re.sub(r'\.([A-ZĐÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴ])', '. $1', result)
+    
+    # Chuẩn bị văn bản tốt hơn cho việc đọc (thêm dấu ngắt tự nhiên)
+    result = result.replace(" - ", ", ")  # Thay dấu gạch ngang bằng dấu phẩy để ngắt nhịp
     
     print(f"TTS text formatted: {result[:100]}...")  # In ra 100 ký tự đầu tiên của văn bản TTS
     return result
@@ -481,9 +502,6 @@ def process_input(request):
 
 
 def chat_view(request):
-    """
-    Render the chat interface
-    """
     return render(request, 'myapp/chat.html', {
         'title': 'Trợ lý đọc báo Nhân Dân'
     })
