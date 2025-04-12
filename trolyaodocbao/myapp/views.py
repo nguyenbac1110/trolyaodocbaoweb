@@ -9,6 +9,7 @@ import os
 import joblib
 import re
 import random
+import webbrowser  # Add import for browser functionality
 
 # Initialize intent classifier
 intent_classifier = IntentClassifier()
@@ -104,6 +105,12 @@ class XuLyTinTuc:
     def laytin_moinhat(self):
        
         try:
+            # Mở trang báo trong trình duyệt
+            try:
+                webbrowser.open(self.duongdan)
+            except Exception as e:
+                print(f"Không thể mở trình duyệt: {str(e)}")
+                
             response = requests.get(self.duongdan)
             soup = BeautifulSoup(response.content, 'html.parser')
             danhsachtin = []
@@ -223,6 +230,12 @@ class XuLyTinTuc:
         
         if tin_phuhop and tile_phuhop_max >= 0.3:
             try:
+                # Mở bài báo trong trình duyệt
+                try:
+                    webbrowser.open(tin_phuhop['url'])
+                except Exception as e:
+                    print(f"Không thể mở trình duyệt: {str(e)}")
+                
                 headers = {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -267,7 +280,7 @@ class XuLyTinTuc:
                 noidung_parts = list(dict.fromkeys(noidung_parts))
                 
                 if not noidung_parts:
-                    return ["Không thể đọc nội dung bài viết này."]
+                    return ["Không thể đọc nội dung bài viết này. Bài viết đã được mở trong trình duyệt để bạn đọc trực tiếp."]
                 
                 self.baibao_hientai = {
                     'tieude': tin_phuhop['tieude'],
@@ -278,9 +291,76 @@ class XuLyTinTuc:
                 
             except Exception as e:
                 print(f"Lỗi khi tải nội dung: {str(e)}")
-                return ["Không thể tải nội dung chi tiết."]
+                return ["Không thể tải nội dung chi tiết. Bài viết đã được mở trong trình duyệt để bạn đọc trực tiếp."]
         
         return ["Không tìm thấy bài báo với tiêu đề này. Vui lòng nói rõ tiêu đề bài báo bạn muốn đọc."]
+
+    def lay_tin_theloai(self, text):
+        noidung_timkiem = text.lower()
+        chuyenmuc_duocchon = None
+        
+        # Lấy thông tin trang báo hiện tại (Nhân Dân)
+        trangbao = self.danhsach_trangbao["nhandan"]
+        
+        # Xử lý đặc biệt cho "trang chủ"
+        if "trang chủ" in noidung_timkiem:
+            self.duongdan = trangbao["url"]
+            # Mở trang chủ trong trình duyệt
+            try:
+                webbrowser.open(self.duongdan)
+            except Exception as e:
+                print(f"Không thể mở trình duyệt: {str(e)}")
+            return self.laytin_moinhat()
+        
+        # Tìm chuyên mục phù hợp
+        for chuyenmuc, duongdan in trangbao["danhmuc"].items():
+            if chuyenmuc in noidung_timkiem:
+                chuyenmuc_duocchon = duongdan
+                break
+        
+        if not chuyenmuc_duocchon:
+            return [f"Chuyên mục này không có trên báo Nhân Dân hoặc chưa được hỗ trợ. Vui lòng thử chuyên mục khác như: {', '.join(list(trangbao['danhmuc'].keys())[:5])}..."]
+        
+        try:
+            # Tạo URL đầy đủ cho chuyên mục
+            duongdan_url = f"{trangbao['url'].rstrip('/')}{trangbao['prefix']}{chuyenmuc_duocchon}{trangbao['suffix']}"
+            
+            # Thêm header để tránh bị chặn như một bot
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'vi-VN,vi;q=0.9,fr-FR;q=0.8,fr;q=0.7,en-US;q=0.6,en;q=0.5',
+                'Referer': self.duongdan
+            }
+            
+            phanhoi = requests.get(duongdan_url, headers=headers, timeout=10)
+            
+            # Kiểm tra mã trạng thái HTTP
+            if phanhoi.status_code == 403:
+                return [f"Trang báo Nhân Dân đã chặn truy cập đến chuyên mục này. Trang đã được mở trong trình duyệt để bạn xem trực tiếp."]
+            elif phanhoi.status_code != 200:
+                return [f"Không thể tải tin tức cho chuyên mục này. Trang đã được mở trong trình duyệt để bạn xem trực tiếp."]
+            
+            phanhoi.raise_for_status()
+            
+            # Kiểm tra nội dung có chứa thông báo lỗi hoặc từ chối truy cập
+            if "access denied" in phanhoi.text.lower() or "blocked" in phanhoi.text.lower() or "403 forbidden" in phanhoi.text.lower():
+                return [f"Trang báo Nhân Dân đã chặn truy cập đến chuyên mục này. Trang đã được mở trong trình duyệt để bạn xem trực tiếp."]
+            
+            # Lưu URL hiện tại để truy cập bài viết
+            self.duongdan = duongdan_url
+            
+            ketqua = [f"Đã chọn chuyên mục {chuyenmuc} của báo Nhân Dân và mở trong trình duyệt. Đang tải tin tức..."]
+            # Lấy danh sách tin mới nhất cho chuyên mục
+            tin_moi = self.laytin_moinhat()
+            return ketqua + tin_moi
+            
+        except requests.Timeout:
+            return [f"Không thể tải tin tức cho chuyên mục này do quá thời gian chờ. Trang đã được mở trong trình duyệt để bạn xem trực tiếp."]
+        except requests.RequestException as e:
+            return [f"Không thể kết nối đến chuyên mục này. Trang đã được mở trong trình duyệt để bạn xem trực tiếp."]
+        except Exception as e:
+            return [f"Đã xảy ra lỗi khi tải tin tức cho chuyên mục này. Trang đã được mở trong trình duyệt để bạn xem trực tiếp."]
 
     def gioi_thieu_bot(self):
         gioi_thieu = ["Xin chào! Tôi là trợ lý đọc báo Nhân Dân. Tôi có thể giúp bạn đọc tin tức mới nhất từ báo Nhân Dân, đọc tin tức theo chuyên mục bạn quan tâm, và đọc chi tiết nội dung bài báo. Bạn muốn đọc tin tức về chủ đề nào? Ví dụ: chính trị, kinh tế, văn hóa, xã hội..."]
