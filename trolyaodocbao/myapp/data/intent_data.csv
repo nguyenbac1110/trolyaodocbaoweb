@@ -50,5 +50,17 @@ chào bạn,greeting
 hi,greeting
 hello,greeting
 xin chào,greeting
+danh sách chuyên mục,show_categories
+các chuyên mục,show_categories
+liệt kê chuyên mục,show_categories
+hiển thị chuyên mục,show_categories
+có những chuyên mục nào,show_categories
+có những lĩnh vực nào,show_categories
+tin tức mới nhất,latest_news
+tin mới nhất,latest_news
+tin tức hôm nay,latest_news
+tin mới,latest_news
+tin nóng,latest_news
+tin mới cập nhật,latest_news
 
 

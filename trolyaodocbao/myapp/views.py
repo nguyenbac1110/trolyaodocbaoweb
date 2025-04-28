@@ -377,67 +377,42 @@ class XuLyTinTuc:
         # Chọn một lời chào ngẫu nhiên
         return [random.choice(danh_sach_chao)]
 
-    def lay_tin_theloai(self, text):
-        noidung_timkiem = text.lower()
-        chuyenmuc_duocchon = None
-        
-        # Lấy thông tin trang báo hiện tại (Nhân Dân)
-        trangbao = self.danhsach_trangbao["nhandan"]
-        
-        # Xử lý đặc biệt cho "trang chủ"
-        if "trang chủ" in noidung_timkiem:
-            self.duongdan = trangbao["url"]
-            return self.laytin_moinhat()
-        
-        # Tìm chuyên mục phù hợp
-        for chuyenmuc, duongdan in trangbao["danhmuc"].items():
-            if chuyenmuc in noidung_timkiem:
-                chuyenmuc_duocchon = duongdan
-                break
-        
-        if not chuyenmuc_duocchon:
-            return [f"Chuyên mục này không có trên báo Nhân Dân hoặc chưa được hỗ trợ. Vui lòng thử chuyên mục khác như: {', '.join(list(trangbao['danhmuc'].keys())[:5])}..."]
-        
+    def show_categories(self):
+        """Hiển thị tất cả các chuyên mục được hỗ trợ"""
+        # Mở trang báo Nhân Dân trong trình duyệt
         try:
-            # Tạo URL đầy đủ cho chuyên mục
-            duongdan_url = f"{trangbao['url'].rstrip('/')}{trangbao['prefix']}{chuyenmuc_duocchon}{trangbao['suffix']}"
-            
-            # Thêm header để tránh bị chặn như một bot
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                'Accept-Language': 'vi-VN,vi;q=0.9,fr-FR;q=0.8,fr;q=0.7,en-US;q=0.6,en;q=0.5',
-                'Referer': self.duongdan
-            }
-            
-            phanhoi = requests.get(duongdan_url, headers=headers, timeout=10)
-            
-            # Kiểm tra mã trạng thái HTTP
-            if phanhoi.status_code == 403:
-                return [f"Trang báo Nhân Dân đã chặn truy cập đến chuyên mục này."]
-            elif phanhoi.status_code != 200:
-                return [f"Không thể tải tin tức cho chuyên mục này."]
-            
-            phanhoi.raise_for_status()
-            
-            # Kiểm tra nội dung có chứa thông báo lỗi hoặc từ chối truy cập
-            if "access denied" in phanhoi.text.lower() or "blocked" in phanhoi.text.lower() or "403 forbidden" in phanhoi.text.lower():
-                return [f"Trang báo Nhân Dân đã chặn truy cập đến chuyên mục này."]
-            
-            # Lưu URL hiện tại để truy cập bài viết
-            self.duongdan = duongdan_url
-            
-            ketqua = [f"Đã chọn chuyên mục {chuyenmuc} của báo Nhân Dân. Đang tải tin tức..."]
-            # Lấy danh sách tin mới nhất cho chuyên mục
-            tin_moi = self.laytin_moinhat()
-            return ketqua + tin_moi
-            
-        except requests.Timeout:
-            return [f"Không thể tải tin tức cho chuyên mục này do quá thời gian chờ."]
-        except requests.RequestException as e:
-            return [f"Không thể kết nối đến chuyên mục này."]
+            webbrowser.open(self.duongdan)
         except Exception as e:
-            return [f"Đã xảy ra lỗi khi tải tin tức cho chuyên mục này."]
+            print(f"Không thể mở trình duyệt: {str(e)}")
+
+        # Lấy danh sách chuyên mục từ trang báo Nhân Dân
+        trangbao = self.danhsach_trangbao["nhandan"]
+        danhmuc = trangbao["danhmuc"]
+        
+        # Tạo danh sách phản hồi
+        response = ["Tôi đã mở trang báo Nhân Dân trong trình duyệt.", "\nTôi có thể đọc tin tức từ các chuyên mục sau của báo Nhân Dân:"]
+        
+        # Nhóm các chuyên mục theo danh mục lớn
+        nhom_danhmuc = {
+            'Chính trị - Xã hội': ['chính trị', 'xã hội', 'xây dựng đảng', 'xã luận', 'bình luận phê phán'],
+            'Kinh tế': ['kinh tế', 'tài chính chứng khoán', 'thông tin hàng hóa'],
+            'Văn hóa - Giáo dục': ['văn hóa', 'giáo dục'],
+            'Thế giới': ['thế giới', 'bình luận quốc tế', 'asean', 'châu phi', 'châu mỹ', 'châu âu', 'trung đông', 'châu á-tbd'],
+            'Y tế - Môi trường': ['y tế', 'môi trường'],
+            'Khác': ['du lịch', 'thể thao', 'pháp luật', 'khoa học công nghệ', 'bạn đọc', 'góc tư vấn', 'đường dây nóng']
+        }
+        
+        # Thêm các chuyên mục theo nhóm
+        for nhom, danhmuc_list in nhom_danhmuc.items():
+            chuyen_muc_trong_nhom = [dm for dm in danhmuc_list if dm in danhmuc]
+            if chuyen_muc_trong_nhom:
+                response.append(f"\n{nhom}:")
+                for dm in chuyen_muc_trong_nhom:
+                    response.append(f"- {dm.title()}")
+        
+        response.append("\nBạn có thể đọc tin tức từ bất kỳ chuyên mục nào bằng cách nói tên chuyên mục, ví dụ: 'đọc tin kinh tế' hoặc 'tin tức thể thao'")
+        
+        return response
 
     def xuly_yeucau(self, intent, text):
         # Danh sách từ khóa để nhận diện yêu cầu giới thiệu
@@ -461,6 +436,9 @@ class XuLyTinTuc:
         
         elif intent == 'latest_news':
             return self.laytin_moinhat()
+            
+        elif intent == 'show_categories':
+            return self.show_categories()
         
         elif intent == 'search_news':
             result = self.lay_chitiet_baibao(text)

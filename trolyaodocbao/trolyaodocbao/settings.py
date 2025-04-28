@@ -25,8 +25,16 @@ SECRET_KEY = 'django-insecure-b3+e(ba+##9^_c5r@d1^xion%0gh^@@b8pdwjvb)b#d*viph*9
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']  # Allow all hosts in development
 
+# CORS settings
+CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins in development
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "https://texttospeech.responsivevoice.org",
+]
 
 # Application definition
 
@@ -37,10 +45,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',  # Add corsheaders
     'myapp',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',  # Add CORS middleware at the top
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
